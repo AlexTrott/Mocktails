@@ -1,0 +1,14 @@
+POST
+https://api\.example\.com/login
+201
+Content-Type: application/json
+Set-Cookie: session=abc123; HttpOnly
+
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+  "user": {
+    "id": 1,
+    "name": "{{username}}"
+  }
+}

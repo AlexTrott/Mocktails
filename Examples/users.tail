@@ -1,0 +1,15 @@
+GET
+https://api\.example\.com/users
+200
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "{{username}}",
+      "email": "{{email}}"
+    }
+  ]
+}
