@@ -12,13 +12,19 @@ final class MocktailURLProtocol: URLProtocol {
     }
     
     override func startLoading() {
+        MocktailLogger.shared.info("📥 Incoming request: \(request.httpMethod ?? "UNKNOWN") \(request.url?.absoluteString ?? "NO_URL")")
+        
         guard let mocktail = Self.mocktail,
               let mockResponse = mocktail.mockResponse(for: request) else {
+            MocktailLogger.shared.error("❌ No mock response found for request: \(request.httpMethod ?? "UNKNOWN") \(request.url?.absoluteString ?? "NO_URL")")
             client?.urlProtocol(self, didFailWithError: MocktailError.networkError("No mock response found"))
             return
         }
         
+        MocktailLogger.shared.info("✅ Found mock response for request: \(request.httpMethod ?? "UNKNOWN") \(request.url?.absoluteString ?? "NO_URL")")
+        
         guard let url = request.url else {
+            MocktailLogger.shared.error("❌ Invalid URL in request")
             client?.urlProtocol(self, didFailWithError: MocktailError.networkError("Invalid URL"))
             return
         }
@@ -31,9 +37,12 @@ final class MocktailURLProtocol: URLProtocol {
         )
         
         guard let response = httpResponse else {
+            MocktailLogger.shared.error("❌ Failed to create HTTP response")
             client?.urlProtocol(self, didFailWithError: MocktailError.networkError("Failed to create HTTP response"))
             return
         }
+        
+        MocktailLogger.shared.info("📤 Returning response: \(mockResponse.statusCode) for \(url.absoluteString)")
         
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         
@@ -47,6 +56,8 @@ final class MocktailURLProtocol: URLProtocol {
         
         client?.urlProtocol(self, didLoad: processedBody)
         client?.urlProtocolDidFinishLoading(self)
+        
+        MocktailLogger.shared.info("✅ Successfully completed request for \(url.absoluteString)")
     }
     
     override func stopLoading() {
