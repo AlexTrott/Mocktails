@@ -1,7 +1,7 @@
 import Foundation
 
 public final class Mocktail {
-    private let mockResponses: [MockResponse]
+    private var mockResponses: [MockResponse]
     private var placeholders: [String: String] = [:]
     
     public init(mocksDirectoryURL: URL) throws {
@@ -22,9 +22,14 @@ public final class Mocktail {
     }
     
     func mockResponse(for request: URLRequest) -> MockResponse? {
-        return mockResponses.first { mockResponse in
-            mockResponse.matches(request: request)
+        for i in 0..<mockResponses.count {
+            if mockResponses[i].matches(request: request) {
+                let response = mockResponses[i]
+                mockResponses[i].advanceToNextResponse()
+                return response
+            }
         }
+        return nil
     }
     
     func processPlaceholders(in text: String) -> String {

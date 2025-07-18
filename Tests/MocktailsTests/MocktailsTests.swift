@@ -154,4 +154,97 @@ final class MocktailsTests: XCTestCase {
         
         wait(for: [expectation], timeout: 5.0)
     }
+    
+    func testMultipleRequestBlocks() throws {
+        let tailContent = """
+        GET
+        https://api\\.example\\.com/users
+        200
+        Content-Type: application/json
+        
+        {"users": [{"id": 1, "name": "{{username1}}"}]}
+        
+        --
+        
+        200
+        Content-Type: application/json
+        
+        {"users": [{"id": 2, "name": "{{username2}}"}]}
+        
+        --
+        
+        404
+        Content-Type: application/json
+        
+        --
+        
+        200
+        Content-Type: application/json
+        
+        {"users": [{"id": 3, "name": "{{username3}}"}]}
+        """
+        
+        let tailFile = tempDirectory.appendingPathComponent("multiple.tail")
+        try tailContent.write(to: tailFile, atomically: true, encoding: .utf8)
+        
+        let configuration = URLSessionConfiguration.ephemeral
+        let mocktail = try Mocktail.start(withMocksAt: tempDirectory, in: configuration)
+        let session = URLSession(configuration: configuration)
+        
+        mocktail["username1"] = "Alice"
+        mocktail["username2"] = "Bob"
+        mocktail["username3"] = "Charlie"
+        
+        let url = URL(string: "https://api.example.com/users")!
+        let request = URLRequest(url: url)
+        
+        // Test cycling through responses
+        let expectations = [
+            XCTestExpectation(description: "First request"),
+            XCTestExpectation(description: "Second request"),
+            XCTestExpectation(description: "Third request"),
+            XCTestExpectation(description: "Fourth request"),
+            XCTestExpectation(description: "Fifth request")
+        ]
+        
+        let expectedStatusCodes = [200, 200, 404, 200, 200] // Last one repeats
+        var actualStatusCodes: [Int] = []
+        var actualResponseBodies: [String] = []
+        
+        for (index, expectation) in expectations.enumerated() {
+            session.dataTask(with: request) { data, response, error in
+                XCTAssertNil(error)
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    actualStatusCodes.append(httpResponse.statusCode)
+                }
+                
+                if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                    actualResponseBodies.append(responseString)
+                }
+                
+                expectation.fulfill()
+            }.resume()
+        }
+        
+        wait(for: expectations, timeout: 5.0)
+        
+        // Verify the cycling behavior
+        XCTAssertEqual(actualStatusCodes, expectedStatusCodes)
+        
+        // Verify first response contains Alice
+        XCTAssertTrue(actualResponseBodies[0].contains("Alice"))
+        
+        // Verify second response contains Bob
+        XCTAssertTrue(actualResponseBodies[1].contains("Bob"))
+        
+        // Verify third response is empty (404)
+        XCTAssertTrue(actualResponseBodies[2].isEmpty)
+        
+        // Verify fourth response contains Charlie
+        XCTAssertTrue(actualResponseBodies[3].contains("Charlie"))
+        
+        // Verify fifth response also contains Charlie (repeats last)
+        XCTAssertTrue(actualResponseBodies[4].contains("Charlie"))
+    }
 }
