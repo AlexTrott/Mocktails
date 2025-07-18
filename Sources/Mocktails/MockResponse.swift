@@ -10,6 +10,7 @@ struct MockResponse {
         let statusCode: Int
         let headers: [String: String]
         let body: Data
+        let networkDelay: TimeInterval
     }
     
     var statusCode: Int {
@@ -22,6 +23,10 @@ struct MockResponse {
     
     var body: Data {
         return responses[currentIndex].body
+    }
+    
+    var networkDelay: TimeInterval {
+        return responses[currentIndex].networkDelay
     }
     
     mutating func advanceToNextResponse() {
@@ -72,12 +77,22 @@ struct MockResponse {
             
             var headers: [String: String] = [:]
             var bodyStartIndex = statusCodeLineIndex + 1
+            var networkDelay: TimeInterval = 0.0
             
             for i in (statusCodeLineIndex + 1)..<blockLines.count {
                 let line = blockLines[i].trimmingCharacters(in: .whitespaces)
                 if line.isEmpty {
                     bodyStartIndex = i + 1
                     break
+                }
+                
+                // Check for network delay directive
+                if line.hasPrefix("#networkDelay:") {
+                    let delayString = String(line.dropFirst("#networkDelay:".count))
+                    if let delay = TimeInterval(delayString) {
+                        networkDelay = delay
+                    }
+                    continue
                 }
                 
                 let components = line.components(separatedBy: ": ")
@@ -102,7 +117,7 @@ struct MockResponse {
                 body = bodyString.data(using: .utf8) ?? Data()
             }
             
-            responseBlocks.append(ResponseBlock(statusCode: statusCode, headers: headers, body: body))
+            responseBlocks.append(ResponseBlock(statusCode: statusCode, headers: headers, body: body, networkDelay: networkDelay))
         }
         
         guard !responseBlocks.isEmpty else {

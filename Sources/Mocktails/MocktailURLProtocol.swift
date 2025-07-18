@@ -44,8 +44,6 @@ final class MocktailURLProtocol: URLProtocol {
         
         MocktailLogger.shared.info("📤 Returning response: \(mockResponse.statusCode) for \(url.absoluteString)")
         
-        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        
         let processedBody: Data
         if let bodyString = String(data: mockResponse.body, encoding: .utf8) {
             let processedString = mocktail.processPlaceholders(in: bodyString)
@@ -54,10 +52,26 @@ final class MocktailURLProtocol: URLProtocol {
             processedBody = mockResponse.body
         }
         
-        client?.urlProtocol(self, didLoad: processedBody)
-        client?.urlProtocolDidFinishLoading(self)
-        
-        MocktailLogger.shared.info("✅ Successfully completed request for \(url.absoluteString)")
+        let networkDelay = mockResponse.networkDelay
+        if networkDelay > 0 {
+            MocktailLogger.shared.info("⏱️ Applying network delay: \(networkDelay)s for \(url.absoluteString)")
+            
+            DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + networkDelay) { [weak self] in
+                guard let self = self else { return }
+                
+                self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+                self.client?.urlProtocol(self, didLoad: processedBody)
+                self.client?.urlProtocolDidFinishLoading(self)
+                
+                MocktailLogger.shared.info("✅ Successfully completed delayed request for \(url.absoluteString)")
+            }
+        } else {
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: processedBody)
+            client?.urlProtocolDidFinishLoading(self)
+            
+            MocktailLogger.shared.info("✅ Successfully completed request for \(url.absoluteString)")
+        }
     }
     
     override func stopLoading() {

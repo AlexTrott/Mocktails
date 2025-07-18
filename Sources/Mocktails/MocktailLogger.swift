@@ -22,14 +22,14 @@ public final class MocktailLogger {
     
     private let subsystem = "com.mocktails"
     private let category = "network"
-    private let logger: os.Logger
+    private let osLog: OSLog
     private let logLevel: LogLevel
     
     public static var shared: MocktailLogger = MocktailLogger()
     
     public init(logLevel: LogLevel = .info) {
         self.logLevel = logLevel
-        self.logger = os.Logger(subsystem: subsystem, category: category)
+        self.osLog = OSLog(subsystem: subsystem, category: category)
     }
     
     public func configure(logLevel: LogLevel) {
@@ -71,6 +71,6 @@ public final class MocktailLogger {
         let fileName = (file as NSString).lastPathComponent
         let formattedMessage = "[\(fileName):\(line)] \(function) - \(message)"
         
-        logger.log(level: level.osLogType, "\(formattedMessage)")
+        os_log("%{public}@", log: osLog, type: level.osLogType, formattedMessage)
     }
 }

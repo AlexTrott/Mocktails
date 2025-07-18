@@ -1,6 +1,7 @@
 POST
 https://api\.example\.com/login
 201
+#networkDelay:0.5
 Content-Type: application/json
 Set-Cookie: session=abc123; HttpOnly
 

@@ -1,6 +1,7 @@
 GET
 https://api\.example\.com/users
 200
+#networkDelay:0.5
 Content-Type: application/json
 Cache-Control: no-cache
 
