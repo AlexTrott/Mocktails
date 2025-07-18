@@ -189,6 +189,33 @@ Content-Type: application/json
 {"id": "{{userId}}", "name": "User {{userId}}"}
 ```
 
+### Multiple Request Blocks
+
+You can define multiple response blocks in a single `.tail` file using `--` as a separator. Subsequent requests to the same endpoint will cycle through the responses:
+
+```
+GET
+https://api\.example\.com/users
+200
+Content-Type: application/json
+
+{"users": [{"id": 1, "name": "{{username1}}"}]}
+
+--
+
+200
+Content-Type: application/json
+
+{"users": [{"id": 2, "name": "{{username2}}"}]}
+
+--
+
+404
+Content-Type: application/json
+```
+
+See `Examples/multiple_request.tail` for a complete example.
+
 ## Testing
 
 Mocktails works great with XCTest:
